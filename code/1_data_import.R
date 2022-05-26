@@ -15,7 +15,7 @@ library(JTPfunc) # remotes::install_github("justinpriest/JTPfunc") (for function
 
 ### SET PARAMS ###
 maxyear <- 2019
-
+termareas <- c("101-85", "101-90", "101-95")
 
 
 
@@ -65,12 +65,28 @@ nbctroll <- read_csv(here::here("data/_PRIVATE_NBC_Coho_TrollHarvest2001-2019.cs
 
 ###### Tyee Test Fishery ######
 
-tyeecpue <- read_csv(here::here("data/NBC_Coho_TyeeTestFisheryDaily_1956-2019.csv")) %>%
-  pivot_longer(-DATE, "Year") %>%
-  rename("CohoCPUE" = "value") %>%
-  mutate(Date = as.Date(paste0(DATE, "-", Year), format = "%d-%B-%Y"),
-         Std_date = as.Date(paste0(DATE, "-", 2022), format = "%d-%B-%Y"),
-         Year = as.numeric(Year)) %>% 
+# Old data thru 2019 only
+# tyeecpue <- read_csv(here::here("data/NBC_Coho_TyeeTestFisheryDaily_1956-2019.csv")) %>%
+#   pivot_longer(-DATE, "Year") %>%
+#   rename("CohoCPUE" = "value") %>%
+#   mutate(Date = as.Date(paste0(DATE, "-", Year), format = "%d-%B-%Y"),
+#          Std_date = as.Date(paste0(DATE, "-", 2022), format = "%d-%B-%Y"),
+#          Year = as.numeric(Year)) %>% 
+#   dplyr::select(Year, Date, Std_date, CohoCPUE) %>%
+#   arrange(Year) %>%
+#   filter(Year <= maxyear)
+
+
+tyeecpue <- read_csv(here::here("data/NBC_Coho_Tyee_Coho_1956-2021.csv"), skip = 1) %>%
+  rename("canstatwk" = `STAT WEEK ('01)`) %>% 
+  pivot_longer(-c("canstatwk", "MONTH", "DAY"),
+               values_to = "CohoCPUE", names_to = "Year") %>%
+  arrange(Year) %>%
+  mutate(Year = as.integer(Year),
+         Date = as.Date(paste0(Year, "-", MONTH, "-", DAY), 
+                        format = "%Y-%m-%d"),
+         Std_date = as.Date(paste0(2022, "-", MONTH, "-", DAY), 
+                            format = "%Y-%m-%d")) %>%
   dplyr::select(Year, Date, Std_date, CohoCPUE) %>%
   arrange(Year) %>%
   filter(Year <= maxyear)
@@ -95,6 +111,17 @@ NassFW <- read_csv(here::here("data/NBC_Coho_NassRiverFWCatch_2000-2019.csv")) %
   ungroup()
 
 
+
+
+###### Toboggan Escapement #####
+
+toboggan <- read_csv(here::here("data/NBC_Coho_Tobogganescapement.csv")) %>% 
+  rename("Year" = `Return Year`,
+         "wild_esc" = `Wild Escapement`) %>%
+  dplyr::select(Year, wild_esc) %>%
+  filter(Year <= maxyear)
+# Note that there are issues with using this as the "wild" because
+#  these could be F2 non-natural origin fish. 
 
 
 
@@ -128,6 +155,48 @@ UStroll_cpue <- read_csv(here::here("data/SEAK_Coho_TrollFPD_1981-2019.csv"),
 
 wildabundance <- read_csv(here::here("data/SEAK_Coho_wildabundance1982-2021.csv"))
 # To see how this file was created, run script "0_wildabundancecalc.R"
+
+
+
+
+
+
+##### DATA WEEKLY #####
+tyee_weekly <- tyeecpue %>%
+  mutate(week = statweek(Date)) %>%
+  group_by(Year, week) %>%
+  summarise(Tyee_cpue = mean(CohoCPUE)) %>% ungroup()
+
+NassFW_weekly <- NassFW %>% 
+  group_by(Year, week) %>% 
+  summarise(Nass_coho = sum(CohoCatchDaily)) %>% ungroup()
+
+troll_USboundary <- troll_boundary %>%
+  filter(between(StatWeek, 27, 30),
+         !StatArea %in% termareas) %>% # exclude terminal harvest areas
+  group_by(Year, StatWeek) %>%
+  summarise(UStrollCPUE = mean(CohoCPUE))
+#101-40, 101-41, 101-45,
+
+
+
+
+
+
+### Create the overall index to compare ###   
+indices <- tyee_weekly %>% 
+  left_join(NassFW_weekly) %>% 
+  left_join(troll_USboundary, by = c("Year" = "Year", "week" = "StatWeek")) %>%
+  left_join(nbctroll, by = c("Year" = "Year", "week" = "StatWeek"))
+
+
+indices_2000 <- indices %>% 
+  filter(Year >= 2000, between(week, 27, 29)) %>% 
+  group_by(Year) %>% # Need this so that NAs appear when you lead (can't use next week's info this week!)
+  mutate(Tyee_cpue_lead1 = lead(Tyee_cpue, 1),
+         Nass_coho_lead1 = lead(Nass_coho, 1),
+         NBCtrollCPUElead1 = lead(NBCtrollCPUE, 1)) %>% 
+  ungroup() 
 
 
 

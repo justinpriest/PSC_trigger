@@ -13,7 +13,7 @@ output:
 ---
   
 # Overview & Background
-  The [2019 PSC Treaty](https://www.psc.org/publications/pacific-salmon-treaty/) Attachment B states that "If the Alaska Fisheries Performance District (“FPD”) Area 6 troll fishery statistical week 27, 28 and 29 average catch per boat day is" less than 22, there will be closures in both Alaskan and Canadian waters of varying duration and geographical range, depending on CPUE (0-10; 10-14; 15-22).  
+The [2019 PSC Treaty](https://www.psc.org/publications/pacific-salmon-treaty/) Attachment B states that "If the Alaska Fisheries Performance District (“FPD”) Area 6 troll fishery statistical week 27, 28 and 29 average catch per boat day is" less than 22, there will be closures in both Alaskan and Canadian waters of varying duration and geographical range, depending on CPUE (0-10; 10-14; 15-22).  
 
 That is, inseason management of the Boundary Area Coho fishery for both US and Canada is guided by US Troll fishermen in US Districts 101 and 102 ("Area 6"). This was based on observations that historically, US Troll CPUE was correlated to fishery wild abundance.  
 
@@ -26,7 +26,6 @@ All troll data analyzed and presented in here only includes Districts 101 and 10
   
 **Remaining Data Needs**  
   - Canadian Index of Wild Abundance (escapements or regional index)  
-  - Canadian Troll CPUE (can then evaluate its value in complementing US troll data).  
 _Note: Canada has just sent some troll data. It is summarized by month week (NOT stat week) with no other supporting information. This has not yet been evaluated._
 
 
@@ -46,45 +45,6 @@ library(janitor)
 source(here::here("code/1_data_import.R"))
 
 
-##### DATA WEEKLY #####
-tyee_weekly <- tyeecpue %>%
-  mutate(week = statweek(Date)) %>%
-  group_by(Year, week) %>%
-  summarise(Tyee_cpue = mean(CohoCPUE)) %>% ungroup()
-
-NassFW_weekly <- NassFW %>% 
-  group_by(Year, week) %>% 
-  summarise(Nass_coho = sum(CohoCatchDaily)) %>% ungroup()
-
-troll_USboundary <- troll_boundary %>%
-  filter(between(StatWeek, 27, 30),
-         StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>% # exclude terminal harvest areas
-  group_by(Year, StatWeek) %>%
-  summarise(UStrollCPUE = mean(CohoCPUE))
-#101-40, 101-41, 101-45,
-
-
-
-
-
-
-# Put these indices  together  
-indices <- tyee_weekly %>% 
-  left_join(NassFW_weekly) %>% 
-  left_join(troll_USboundary, by = c("Year" = "Year", "week" = "StatWeek")) %>%
-  left_join(nbctroll, by = c("Year" = "Year", "week" = "StatWeek"))
-# Originally the FPD data 1981-2019 but this was restricted. May see vestigial references to pre-2000 data
-
-
-indices_2000 <- indices %>% 
-  filter(Year >= 2000, between(week, 27, 29)) %>% 
-  group_by(Year) %>% # Need this so that NAs appear when you lead (can't use next week's info this week!)
-  mutate(Tyee_cpue_lead1 = lead(Tyee_cpue, 1),
-         Nass_coho_lead1 = lead(Nass_coho, 1),
-         NBCtrollCPUElead1 = lead(NBCtrollCPUE, 1)) %>% 
-  ungroup() 
-
-
 
 
 ```
@@ -100,15 +60,15 @@ Does US troll CPUE in early weeks predict the CPUE for the rest of the season? L
 # same as above but this includes 1981-2000 data
 troll81to19 <- UStroll_cpue %>%
   filter(District == "101" | District == "102",
-         StatWeek <= 29) %>%
-  filter(StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>% # exclude terminal harvest areas
+         StatWeek <= 29,
+         !StatArea %in% termareas) %>% # exclude terminal harvest areas
   group_by(Year) %>%
   summarise(UStrollCPUE = mean(CohoCPUE),
             numtrips = n_distinct(TripNumber)) 
 
 troll81to19allweeks <- UStroll_cpue %>%
   filter(District == "101" | District == "102") %>% 
-  filter(StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>% # exclude terminal harvest areas
+  filter(!StatArea %in% termareas) %>% # exclude terminal harvest areas
   group_by(Year) %>%
   summarise(UStrollCPUEallwk = mean(CohoCPUE),
             USnumtripsallwk = n_distinct(TripNumber)) 
@@ -136,8 +96,8 @@ troll81to19 %>%
 ```{r UStrollbackground27-30, message=FALSE, warning=FALSE, fig.height=3}
 troll81to19wk30 <- UStroll_cpue %>%
   filter(District == "101" | District == "102",
-         StatWeek <= 30) %>%
-  filter(StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>% # exclude terminal harvest areas
+         StatWeek <= 30,
+         !StatArea %in% termareas) %>% # exclude terminal harvest areas
   group_by(Year) %>%
   summarise(UStrollCPUEwk30 = mean(CohoCPUE)) 
 
@@ -148,7 +108,7 @@ troll81to19wk30 %>%
   geom_smooth(method = "lm") +
   scale_fill_adfg("glacier", discrete = FALSE) +
   labs(x = "US Troll CPUE (Weeks 27-30)", y = "Troll CPUE (All Weeks)", 
-       title = "US Troll CPUE: Early vs All Season (INCLUDES week 30)")  +
+       title = "US Troll CPUE: Early vs All Season (INCLUDES week 30)") +
   theme_crisp(base_family = "Arial")
 
 troll81to19wk30 %>% 
@@ -172,7 +132,7 @@ Note that this is wild coho abundance for all of Southeast Alaska, not just the 
 
 # Not currently used (this is only 2000-2019 data!)
 troll_boundannual <- troll_boundary %>%
-  filter(StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>% # exclude terminal harvest areas
+  filter(!StatArea %in% termareas) %>% # exclude terminal harvest areas
   group_by(Year) %>%
   summarise(UStrollCPUE = mean(CohoCPUE))
 
@@ -296,7 +256,7 @@ troll_boundarysummary <- troll_boundary %>%
   #  mutate(stddate = as_date(paste0("2020/", month(SellDate), "/", day(SellDate))),
   #         preJuly25 = stddate <= as_date("2020-07-25")) %>% # This section can set up filter to exclude >7/25
   filter(StatWeek <= 29, # exclude week 30, based on treaty language
-         StatArea != 101-85, StatArea != 101-90, StatArea != 101-95) %>%
+         !StatArea %in% termareas) %>%
   group_by(Year) %>%
   summarise(meanTrollCPUE = round(mean(CohoCPUE), 1),
             totalTrollEffort = round(sum(Effort_boatdays), 1),
