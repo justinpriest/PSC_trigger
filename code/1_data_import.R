@@ -112,6 +112,21 @@ NassFW <- read_csv(here::here("data/NBC_Coho_NassRiverFWCatch_2000-2019.csv")) %
 
 
 
+###### Nass River FW  CPUE #####
+
+Nasscpue <- read_csv(here::here("data/NBC_Coho_NassRiverFWCPUE_1992-2021.csv"), skip = 1) %>% 
+  pivot_longer(-Date, names_to = "Year", values_to = "nasscpue") %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y"),
+         Year = as.numeric(Year),
+         Date = as.Date(paste0(Year, "-", month(Date), "-", day(Date)), format = "%Y-%m-%d"),
+         Std_date = as.Date(paste0(2022, "-", month(Date), "-", day(Date)), format = "%Y-%m-%d"),
+         statweek = statweek(Date)) %>%
+  dplyr::select(Year, Date, Std_date, statweek, nasscpue) %>% 
+  filter(Year <= maxyear)
+
+
+
+
 
 ###### Toboggan Escapement #####
 
@@ -122,6 +137,9 @@ toboggan <- read_csv(here::here("data/NBC_Coho_Tobogganescapement.csv")) %>%
   filter(Year <= maxyear)
 # Note that there are issues with using this as the "wild" because
 #  these could be F2 non-natural origin fish. 
+# JTP May 2022: Deciding not to use Toboggan. Code is vestigial. 
+
+
 
 
 
@@ -149,7 +167,14 @@ UStroll_cpue <- read_csv(here::here("data/SEAK_Coho_TrollFPD_1981-2019.csv"),
                 StatArea, CohoCatch, Effort_boatdays, CohoCPUE)
 
 
+usboundarytroll <- UStroll_cpue %>%
+  filter(between(StatWeek, 27, 29),
+         District == "101" | District == "102",
+         !StatArea %in% termareas) # exclude terminal harvest areas
 
+usboundtrollann <- usboundarytroll %>%
+  group_by(Year) %>%
+  summarise(USboundarytrollCPUE = mean(CohoCPUE)) 
 
 
 

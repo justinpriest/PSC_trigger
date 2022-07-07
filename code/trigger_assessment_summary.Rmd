@@ -138,7 +138,7 @@ troll_boundannual <- troll_boundary %>%
 
 UStrollcpue_wildabund <- wildabundance %>%
   #filter(Year >= 2000) %>% # uncomment this for final
-  filter(Year < maxyear) %>%
+  filter(Year <= maxyear) %>%
   left_join(troll81to19) # replace with troll_boundannual for final
 
 
@@ -168,7 +168,7 @@ lm(EstTotalWildAbund ~ UStrollCPUE, weights = numtrips, data = UStrollcpue_wilda
 ```{r trollwildrelationship30, warning=FALSE, message=FALSE, fig.height=3}
 UStrollcpue_wildabundwk30 <- wildabundance %>%
   #filter(Year >= 2000) %>% # uncomment this for final
-  filter(Year < maxyear) %>%
+  filter(Year <= maxyear) %>%
   left_join(troll81to19wk30) # replace with troll_boundannual for final
 
 
