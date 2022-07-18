@@ -25,14 +25,16 @@ trollwildplot <- ggplot(wildabundance %>%
   scale_fill_adfg("glacier", discrete = FALSE) +
   labs(x = "Mean US Troll CPUE (Weeks 27-29)", y = "Est. SEAK Wild Coho Abundance", 
        title = "Relationship between US troll CPUE and wild coho abundance")  +
-  theme_crisp(base_family = "Arial")
+  theme_crisp(base_family = "Arial") +
+  annotate(geom = "label", x = 72, y = 1900000, size = 4, 
+           label = "Marginally Significant Relationship \n p=0.08",  hjust = "center")
 trollwildplot
 
 lm(EstTotalWildAbund ~ USboundarytrollCPUE, 
    data = wildabundance %>%
      filter(Year <= maxyear) %>%
-     left_join(usboundtrollann)) %>% summary()
-#ggsave(trollwildplot, filename = "output/wildtroll.png", width = 6.5, height = 4, units = "in")
+     left_join(usboundtrollann)) %>% summary() %>% coef()
+# ggsave(trollwildplot, filename = "output/wildtroll.png", width = 6.5, height = 4, units = "in")
 
 
 
@@ -75,7 +77,7 @@ tyee_weekly %>%
   filter(Year >= 2000) %>%
   group_by(Year) %>%
   mutate(cummsum = cumsum(replace_na(Tyee_cpue, 0)),
-         perctotal = cummsum / max(cummsum)) %>% filter(week == 34) %>% View
+         perctotal = cummsum / max(cummsum)) %>% filter(week == 34) #%>% View
 
 
 ###############################
@@ -120,7 +122,7 @@ nasscumchart
 NassFW_weekly %>% 
   group_by(Year) %>%
   mutate(cummsum = cumsum(replace_na(Nass_coho, 0)),
-         perctotal = cummsum / max(cummsum)) %>% filter(week == 34) %>% View
+         perctotal = cummsum / max(cummsum)) %>% filter(week == 34) #%>% View
 
 
 
@@ -132,10 +134,16 @@ tyeetroll <- indices_2000 %>%
   ggplot(aes(x = UStrollCPUE, y = Tyee_cpue, fill = Year)) +
   geom_smooth(method = "lm", color = "black") + 
   geom_point(pch = 21, color="black", size = 3) +
+  scale_y_continuous(limits = c(-0.05, 0.32)) +
   scale_fill_adfg("glacier", discrete = FALSE) +
   labs(y = "Tyee CPUE") +
-  theme_crisp(base_family = "Arial")
+  theme_crisp(base_family = "Arial") + 
+  annotate(geom = "label", x = 145, y = -0.02, size = 4, 
+           label = "Significant Relationship \n p<0.001",  hjust = "center")
 tyeetroll + labs(title = "US Troll CPUE vs Tyee CPUE, Stat Weeks 27–29, same week") 
+
+lm(Tyee_cpue ~ UStrollCPUE, 
+   data = indices_2000) %>% summary() 
 #ggsave(tyeetroll, filename = here::here("output/troll_tyee.png"), width = 6.5, height = 4, units = "in")
 
 
@@ -145,11 +153,16 @@ nasstroll <- indices_2000 %>%
   geom_smooth(method = "lm", color = "black") + 
   geom_point(pch = 21, color="black", size = 3) +
   scale_fill_adfg("glacier", discrete = FALSE) +
-  scale_y_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma, limits = c(-325, 1700)) +
   labs(x = "US Troll FPD CPUE", y = "Nass Catch") +
-  theme_crisp(base_family = "Arial")
+  theme_crisp(base_family = "Arial") + 
+  annotate(geom = "label", x = 150, y = -220, size = 4, 
+           label = "Significant Relationship \n p<0.001",  hjust = "center")
 nasstroll + labs(title = "US Troll CPUE vs Nass catch, Stat Weeks 27–29, same week")
-#ggsave(nasstroll, filename = here::here("output/troll_nass.png"), width = 6.5, height = 4, units = "in")
+
+lm(Nass_coho ~ UStrollCPUE, 
+   data = indices_2000) %>% summary() 
+ggsave(nasstroll, filename = here::here("output/troll_nass.png"), width = 6.5, height = 4, units = "in")
 
 
 trollvsnasstyee <- (tyeetroll  + labs(x = "")) / (nasstroll + labs(x = "US Troll FPD CPUE") ) +
@@ -168,8 +181,13 @@ tyeelead <- indices_2000 %>%
   geom_point(pch = 21, color="black", size = 3) +
   scale_fill_adfg("glacier", discrete = FALSE) +
   labs(x = "US Troll FPD CPUE (Districts 101/102)", y = "Tyee CPUE, one week lead") +
-  theme_crisp(base_family = "Arial") 
+  theme_crisp(base_family = "Arial") +
+  annotate(geom = "label", x = 150, y = 0.05, size = 4, 
+           label = "Significant Relationship \n p<0.001",  hjust = "center")
 tyeelead + labs(title = "US Troll CPUE vs following week Tyee CPUE, Stat Weeks 27–29")
+
+lm(Tyee_cpue_lead1 ~ UStrollCPUE, 
+   data = indices_2000) %>% summary() 
 #ggsave(tyeelead, filename = here::here("output/troll_tyee_lead.png"), width = 6.5, height = 4, units = "in")
 
 ## US troll vs Nass, lag
@@ -180,8 +198,13 @@ nasslead <- indices_2000 %>%
   scale_fill_adfg("glacier", discrete = FALSE) +
   scale_y_continuous(labels = scales::comma) +
   labs(x = "US Troll FPD CPUE", y = "Nass Catch, one week lead") +
-  theme_crisp(base_family = "Arial") 
+  theme_crisp(base_family = "Arial") +
+  annotate(geom = "label", x = 150, y = 0, size = 4, 
+           label = "Significant Relationship \n p<0.001",  hjust = "center")
 nasslead + labs(title = "US Troll CPUE vs following week Nass catch, Stat Weeks 27–29")
+
+lm(Nass_coho_lead1 ~ UStrollCPUE, 
+   data = indices_2000) %>% summary() 
 #ggsave(nasslead, filename = here::here("output/troll_nass_lead.png"), width = 6.5, height = 4, units = "in")
 
 
@@ -202,7 +225,12 @@ us_nbctroll <- indices_2000 %>%
   scale_y_continuous(labels = scales::comma) +
   labs(x = "US Troll FPD CPUE", y = "NBC Troll CPUE, same weeks", 
        title = "US Troll CPUE vs NBC Troll CPUE, Stat Weeks 27–29") +
-  theme_crisp(base_family = "Arial")
+  theme_crisp(base_family = "Arial") +
+  annotate(geom = "label", x = 150, y = 13, size = 4, 
+           label = "Significant Relationship \n p=0.009",  hjust = "center")
 us_nbctroll
+
+lm(NBCtrollCPUE ~ UStrollCPUE, 
+   data = indices_2000) %>% summary() 
 #ggsave(us_nbctroll, filename = here::here("output/troll_uscan.png"), width = 6.5, height = 4, units = "in")
 
